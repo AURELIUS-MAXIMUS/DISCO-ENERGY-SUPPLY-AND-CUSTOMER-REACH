@@ -1,0 +1,41 @@
+import pandas as pd
+
+# 1) Ensure the Date column is datetime
+df_long["Date"] = pd.to_datetime(df_long["Date"])
+
+# 2) Filter to total customer numbers, excluding the national aggregate
+metric = "TOTAL CUSTOMER NUMBER"
+cust_df = df_long.query("Metric == @metric and DisCo != 'DISCOS'").copy()
+
+# 3) Extract the year
+cust_df["Year"] = cust_df["Date"].dt.year
+
+# 4) Compute annual average customer count per DisCo
+annual_avg = (
+    cust_df
+    .groupby(["DisCo", "Year"])["Value"]
+    .mean()
+    .reset_index(name="Avg_Customers")
+)
+
+# 5) Compute year-over-year growth rate (%) per DisCo
+annual_avg["Growth Rate (%)"] = (
+    annual_avg
+    .groupby("DisCo")["Avg_Customers"]
+    .pct_change()
+    .mul(100)
+)
+
+# 6) Pivot into a table: rows = DisCo, columns = Year, values = Growth Rate (%)
+growth_table = annual_avg.pivot(
+    index="DisCo",
+    columns="Year",
+    values="Growth Rate (%)"
+)
+
+# 7) (Optional) Round for readability
+growth_table = growth_table.round(2)
+
+# 8) Display the table
+print("Annual Customer Growth Rate (%) for each DisCo:")
+print(growth_table)
