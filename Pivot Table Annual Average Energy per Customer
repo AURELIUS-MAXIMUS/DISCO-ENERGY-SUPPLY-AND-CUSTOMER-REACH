@@ -1,0 +1,31 @@
+import pandas as pd
+
+# Ensure datetime format
+df_long["Date"] = pd.to_datetime(df_long["Date"])
+
+# Filter required metrics and exclude aggregate 'DISCOS'
+energy_df = df_long.query("Metric == 'ENERGY BILLED/ELECTRICITY SUPPLY (GWH)' and DisCo != 'DISCOS'").copy()
+customer_df = df_long.query("Metric == 'TOTAL CUSTOMER NUMBER' and DisCo != 'DISCOS'").copy()
+
+# Create 'Year' column
+energy_df["Year"] = energy_df["Date"].dt.year
+customer_df["Year"] = customer_df["Date"].dt.year
+
+# Group and calculate annual average per DisCo
+energy_annual = energy_df.groupby(["DisCo", "Year"])["Value"].mean().reset_index()
+energy_annual.rename(columns={"Value": "Annual Energy"}, inplace=True)
+
+customer_annual = customer_df.groupby(["DisCo", "Year"])["Value"].mean().reset_index()
+customer_annual.rename(columns={"Value": "Annual Customers"}, inplace=True)
+
+# Merge both DataFrames on DisCo and Year
+merged_annual = pd.merge(energy_annual, customer_annual, on=["DisCo", "Year"])
+
+# Calculate Energy per Customer
+merged_annual["Energy per Customer"] = merged_annual["Annual Energy"] / merged_annual["Annual Customers"]
+
+# Pivot the result to form a table: Rows = Year, Columns = DisCo, Values = Energy per Customer
+energy_per_customer_table = merged_annual.pivot(index="Year", columns="DisCo", values="Energy per Customer")
+
+# Display the table
+print(energy_per_customer_table.round(4))  # Round for readability
