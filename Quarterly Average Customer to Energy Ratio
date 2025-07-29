@@ -1,0 +1,43 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Ensure datetime format
+df_long["Date"] = pd.to_datetime(df_long["Date"])
+
+# Filter relevant metrics and exclude the 'DISCOS' aggregate
+cust_df = df_long.query("Metric == 'TOTAL CUSTOMER NUMBER' and DisCo != 'DISCOS'").copy()
+energy_df = df_long.query("Metric == 'ENERGY BILLED/ELECTRICITY SUPPLY (GWH)' and DisCo != 'DISCOS'").copy()
+
+# Add 'Quarter' as period (e.g., '2015Q1')
+cust_df["Quarter"] = cust_df["Date"].dt.to_period("Q")
+energy_df["Quarter"] = energy_df["Date"].dt.to_period("Q")
+
+# Group and average values quarterly
+cust_quarterly = cust_df.groupby(["DisCo", "Quarter"])["Value"].mean().reset_index()
+cust_quarterly.rename(columns={"Value": "Avg Customers"}, inplace=True)
+
+energy_quarterly = energy_df.groupby(["DisCo", "Quarter"])["Value"].mean().reset_index()
+energy_quarterly.rename(columns={"Value": "Avg Energy"}, inplace=True)
+
+# Merge the two
+merged = pd.merge(cust_quarterly, energy_quarterly, on=["DisCo", "Quarter"])
+
+# Compute customer-to-energy ratio
+merged["Customer-to-Energy Ratio"] = merged["Avg Customers"] / merged["Avg Energy"]
+
+# Convert Quarter to timestamp for plotting
+merged["Quarter"] = merged["Quarter"].dt.to_timestamp()
+
+# Plotting
+plt.figure(figsize=(14, 8))
+sns.lineplot(data=merged, x="Quarter", y="Customer-to-Energy Ratio", hue="DisCo", marker="o")
+
+plt.title("Quarterly Averages of Customer-to-Energy Ratio for 11 DISCOs")
+plt.xlabel("Quarter")
+plt.ylabel("Customer-to-Energy Ratio (Customers per GWh)")
+plt.xticks(rotation=45)
+plt.grid(True)
+plt.legend(title="DisCo", bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
