@@ -1,0 +1,41 @@
+import pandas as pd
+
+# 1) Ensure 'Date' is datetime
+df_long["Date"] = pd.to_datetime(df_long["Date"])
+
+# 2) Filter to the energy‑supply ratio metric and exclude the 'DISCOS' aggregate
+metric = "ENERGY BILLED/ELECTRICITY SUPPLY (GWH)"
+energy_df = df_long.query("Metric == @metric and DisCo != 'DISCOS'").copy()
+
+# 3) Extract the Year
+energy_df["Year"] = energy_df["Date"].dt.year
+
+# 4) Compute each DisCo’s annual average ratio
+annual_avg = (
+    energy_df
+    .groupby(["DisCo", "Year"])["Value"]
+    .mean()
+    .reset_index(name="Annual Avg Ratio (GWh)")
+)
+
+# 5) Compute year‑over‑year growth rate (%) per DisCo
+annual_avg["Growth Rate (%)"] = (
+    annual_avg
+    .groupby("DisCo")["Annual Avg Ratio (GWh)"]
+    .pct_change()
+    .mul(100)
+)
+
+# 6) Pivot to a table: DisCos as rows, Years as columns, values = Growth Rate (%)
+growth_table = annual_avg.pivot(
+    index="DisCo",
+    columns="Year",
+    values="Growth Rate (%)"
+)
+
+# 7) (Optional) Round for readability
+growth_table = growth_table.round(2)
+
+# 8) Display the result
+print("Annual Growth Rates of ENERGY BILLED / ENERGY SUPPLY (%) by DisCo:")
+print(growth_table)
