@@ -1,0 +1,27 @@
+import pandas as pd
+
+# 1. Ensure 'Date' is datetime
+df_long["Date"] = pd.to_datetime(df_long["Date"])
+
+# 2. Filter for the specific metric and exclude 'DISCOS'
+metric = "TOTAL CUSTOMER NUMBER"
+filtered_df = df_long.query("Metric == @metric and DisCo != 'DISCOS'").copy()
+
+# 3. Extract the year from the Date
+filtered_df["Year"] = filtered_df["Date"].dt.year
+
+# 4. Group by DisCo and Year, then calculate the mean
+annual_avg = (
+    filtered_df
+    .groupby(["DisCo", "Year"])["Value"]
+    .mean()
+    .reset_index()
+    .rename(columns={"Value": "Annual Average"})
+)
+
+# 5. Pivot the table for easier viewing (years as rows, discos as columns)
+annual_avg_table = annual_avg.pivot(index="Year", columns="DisCo", values="Annual Average")
+
+# 6. Display the result
+print("Annual Average of TOTAL CUSTOMER NUMBER for Each DisCo:")
+print(annual_avg_table.round(2))
