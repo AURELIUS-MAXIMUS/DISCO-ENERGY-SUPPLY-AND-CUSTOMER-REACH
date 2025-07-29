@@ -1,0 +1,31 @@
+import pandas as pd
+
+# Ensure datetime format
+df_long["Date"] = pd.to_datetime(df_long["Date"])
+
+# Filter relevant metrics and exclude the 'DISCOS' aggregate
+cust_df = df_long.query("Metric == 'TOTAL CUSTOMER NUMBER' and DisCo != 'DISCOS'").copy()
+energy_df = df_long.query("Metric == 'ENERGY BILLED/ELECTRICITY SUPPLY (GWH)' and DisCo != 'DISCOS'").copy()
+
+# Add 'Year' column
+cust_df["Year"] = cust_df["Date"].dt.year
+energy_df["Year"] = energy_df["Date"].dt.year
+
+# Group by DisCo and Year, and compute annual averages
+cust_annual = cust_df.groupby(["DisCo", "Year"])["Value"].mean().reset_index()
+cust_annual.rename(columns={"Value": "Avg Customers"}, inplace=True)
+
+energy_annual = energy_df.groupby(["DisCo", "Year"])["Value"].mean().reset_index()
+energy_annual.rename(columns={"Value": "Avg Energy"}, inplace=True)
+
+# Merge customer and energy data
+merged_annual = pd.merge(cust_annual, energy_annual, on=["DisCo", "Year"])
+
+# Compute Customer-to-Energy Ratio
+merged_annual["Customer-to-Energy Ratio"] = merged_annual["Avg Customers"] / merged_annual["Avg Energy"]
+
+# Reorder columns for readability
+final_table = merged_annual[["DisCo", "Year", "Avg Customers", "Avg Energy", "Customer-to-Energy Ratio"]]
+
+# Display result
+print(final_table.sort_values(by=["Year", "DisCo"]).to_string(index=False))
