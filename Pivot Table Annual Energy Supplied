@@ -1,0 +1,27 @@
+import pandas as pd
+
+# Ensure 'Date' is datetime
+df_long["Date"] = pd.to_datetime(df_long["Date"])
+
+# Filter the metric and exclude 'DISCOS'
+metric = "ENERGY BILLED/ELECTRICITY SUPPLY (GWH)"
+filtered_df = df_long.query("Metric == @metric and DisCo != 'DISCOS'").copy()
+
+# Extract year
+filtered_df["Year"] = filtered_df["Date"].dt.year
+
+# Group by DisCo and Year, compute mean
+annual_avg = (
+    filtered_df
+    .groupby(["DisCo", "Year"])["Value"]
+    .mean()
+    .reset_index()
+    .rename(columns={"Value": "Annual Average"})
+)
+
+# Pivot for better viewing (years as rows, DisCos as columns)
+pivot_table = annual_avg.pivot(index="Year", columns="DisCo", values="Annual Average").sort_index()
+
+# Display the result
+print("Annual Averages of ENERGY BILLED / ENERGY SUPPLIED (GWH):")
+print(pivot_table)
