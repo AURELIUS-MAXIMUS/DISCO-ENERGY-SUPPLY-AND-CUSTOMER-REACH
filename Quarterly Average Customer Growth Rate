@@ -1,0 +1,55 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Ensure 'Date' is datetime
+df_long["Date"] = pd.to_datetime(df_long["Date"])
+
+# Filter for the metric and exclude the 'DISCOS' aggregate
+metric = "TOTAL CUSTOMER NUMBER"
+filtered_df = df_long.query("Metric == @metric and DisCo != 'DISCOS'").copy()
+
+# Set Date as index and assign Quarter
+filtered_df.set_index("Date", inplace=True)
+filtered_df["Quarter"] = filtered_df.index.to_period("Q")
+
+# Compute quarterly average per DisCo
+quarterly_avg = (
+    filtered_df.groupby(["DisCo", "Quarter"])["Value"]
+    .mean()
+    .reset_index()
+    .rename(columns={"Value": "Quarterly Avg Customers"})
+)
+
+# Calculate quarter-over-quarter % change
+quarterly_avg["Quarterly Growth Rate (%)"] = (
+    quarterly_avg.groupby("DisCo")["Quarterly Avg Customers"]
+    .pct_change()
+    .mul(100)
+)
+
+# Convert 'Quarter' to string format like '2015Q1' for plotting
+quarterly_avg["Quarter"] = quarterly_avg["Quarter"].astype(str)
+
+# Drop rows with NaN growth rate (i.e., first quarter for each DisCo)
+quarterly_avg.dropna(subset=["Quarterly Growth Rate (%)"], inplace=True)
+
+# Plot
+plt.figure(figsize=(14, 8))
+sns.lineplot(
+    data=quarterly_avg,
+    x="Quarter",
+    y="Quarterly Growth Rate (%)",
+    hue="DisCo",
+    marker="o",
+    linewidth=2
+)
+
+plt.title("Quarterly Customer Growth Rate (%) for 11 DISCOs", fontsize=16)
+plt.xlabel("Quarter", fontsize=12)
+plt.ylabel("Growth Rate (%)", fontsize=12)
+plt.xticks(rotation=45)
+plt.grid(True, linestyle="--", alpha=0.5)
+plt.legend(title="DisCo", bbox_to_anchor=(1.05, 1), loc="upper left")
+plt.tight_layout()
+plt.show()
